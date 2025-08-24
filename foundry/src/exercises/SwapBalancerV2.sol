@@ -62,6 +62,9 @@ contract SwapBalancerV2 {
         external
     {
         // Write your code here
+        IERC20(weth).transferFrom(msg.sender, address(this), wethAmountIn);
+        IERC20(weth).approve(address(vault), wethAmountIn);
+        swap(address(weth), address(reth), wethAmountIn, rEthAmountOutMin, BALANCER_POOL_ID_RETH_WETH);
     }
 
     /// @notice Swaps rETH to WETH using the Balancer Vault.
@@ -72,5 +75,8 @@ contract SwapBalancerV2 {
         external
     {
         // Write your code here
+        IERC20(reth).transferFrom(msg.sender, address(this), rEthAmountIn);
+        IERC20(reth).approve(address(vault), rEthAmountIn);
+        swap(address(reth), address(weth), rEthAmountIn, wethAmountOutMin, BALANCER_POOL_ID_RETH_WETH);
     }
 }

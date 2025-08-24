@@ -16,6 +16,7 @@ contract RethNav {
     /// @return The exchange rate of 1 rETH into ETH in wei (18 decimals).
     function getExchangeRate() external view returns (uint256) {
         // Write your code here
+        return reth.getExchangeRate();
     }
 
     /// @notice Fetches the current exchange rate of rETH from the Chainlink price feed.

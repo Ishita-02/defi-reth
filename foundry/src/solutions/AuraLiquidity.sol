@@ -99,7 +99,7 @@ contract AuraLiquidity {
         // Withdraw, unwrap and claim rewards
         require(rewardPool.withdrawAndUnwrap(shares, true), "withdraw failed");
 
-        uint256 bptBal = bpt.balanceOf(address(this));
+        uint256 bptBal = IERC20(bpt).balanceOf(address(this));
 
         // Tokens must be ordered numerically by token address
         address[] memory assets = new address[](2);

@@ -56,6 +56,9 @@ contract SwapUniswapV3 {
         external
     {
         // Write your code inside here
+        IERC20(weth).transferFrom(msg.sender, address(this), wethAmountIn);
+        IERC20(weth).approve(address(router), wethAmountIn);
+        swap(address(weth), address(reth), UNISWAP_V3_POOL_FEE_RETH_WETH, wethAmountIn, rEthAmountOutMin, address(this));
     }
 
     /// @notice Swaps rETH to WETH using Uniswap V3.
@@ -66,5 +69,8 @@ contract SwapUniswapV3 {
         external
     {
         // Write your code inside here
+        IERC20(reth).transferFrom(msg.sender, address(this), rEthAmountIn);
+        IERC20(reth).approve(address(router), rEthAmountIn);
+        swap(address(reth), address(weth), UNISWAP_V3_POOL_FEE_RETH_WETH, rEthAmountIn, wethAmountOutMin, address(this));
     }
 }

@@ -93,6 +93,23 @@ contract BalancerLiquidity {
     ///      The user receives Balancer Pool Tokens (BPT) as a representation of their share in the pool.
     function join(uint256 rethAmount, uint256 wethAmount) external {
         // Write your code here
+        IERC20(reth).transferFrom(msg.sender, address(this), rethAmount);
+        IERC20(weth).transferFrom(msg.sender, address(this), wethAmount);
+        IERC20(reth).approve(address(vault), rethAmount);
+        IERC20(weth).approve(address(vault), wethAmount);
+
+        address[] memory assets = new address[](2);
+        assets[0] = address(reth);
+        assets[1] = address(weth);
+
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = rethAmount;
+        amounts[1] = wethAmount;
+
+        _join(msg.sender, assets , amounts);
+        IERC20(reth).transfer(msg.sender, IERC20(reth).balanceOf(address(this)));
+        IERC20(weth).transfer(msg.sender, IERC20(weth).balanceOf(address(this)));
+
     }
 
     /// @notice Exit the Balancer liquidity pool and withdraw RETH and/or WETH
@@ -102,5 +119,17 @@ contract BalancerLiquidity {
     ///      It performs an exit from the pool and returns RETH and/or WETH.
     function exit(uint256 bptAmount, uint256 minRethAmountOut) external {
         // Write your code here
+        IERC20(bpt).transferFrom(msg.sender, address(this), bptAmount);
+
+        address[] memory assets = new address[](2);
+        assets[0] = address(reth);
+        assets[1] = address(weth);
+
+        uint256[] memory minAmounts = new uint256[](2);
+        minAmounts[0] = minRethAmountOut;
+        minAmounts[1] = 0;
+
+
+        _exit(bptAmount, msg.sender, assets, minAmounts);
     }
 }

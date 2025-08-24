@@ -77,6 +77,11 @@ contract FlashLev is Pay, Token, AaveHelper, SwapHelper {
         returns (uint256 max, uint256 price, uint256 ltv, uint256 maxLev)
     {
         // Write your code here
+        price = oracle.getAssetPrice(collateral);
+        uint256 decimals;
+        (decimals, ltv,,,,,,,,) = dataProvider.getReserveConfigurationData(collateral);
+        maxLev = ltv * 1e4 / (1e4 - ltv);
+        max = baseColAmount * 10 ** (18 - decimals) * ltv * price / (1e4 - ltv);
     }
 
     /// @notice Parameters for the swap process
@@ -137,12 +142,36 @@ contract FlashLev is Pay, Token, AaveHelper, SwapHelper {
     //                and minimum health factor
     function open(OpenParams calldata params) external {
         // Write your code here
+        IERC20(params.collateral).transferFrom(msg.sender, address(this), params.colAmount);
+        bytes memory data = abi.encode(
+            FlashLoanData({
+                coin: params.coin,
+                collateral: params.collateral,
+                open: true,
+                caller: msg.sender,
+                colAmount: params.colAmount,
+                swap: params.swap
+        }));
+        flashLoan(params.coin, params.coinAmount, data);
+        uint256 healthFactor = getHealthFactor(address(this));
+        assert(healthFactor >= params.minHealthFactor);
     }
 
     /// @notice Close a leveraged position by repaying the borrowed coin
     /// @param params Parameters for closing the position, including the amount of collateral to keep
     function close(CloseParams calldata params) external {
         // Write your code here
+        uint256 totalDebt = getDebt(address(this), params.coin);
+        bytes memory data = abi.encode(
+            FlashLoanData({
+                coin: params.coin,
+                collateral: params.collateral,
+                open: false,
+                caller: msg.sender,
+                colAmount: params.colAmount,
+                swap: params.swap
+        }));
+        flashLoan(params.coin, totalDebt, data);
     }
 
     /// @notice Callback function for handling flash loan operations
@@ -159,5 +188,28 @@ contract FlashLev is Pay, Token, AaveHelper, SwapHelper {
         bytes memory params
     ) internal override {
         // Write your code here
+        FlashLoanData memory flashLoanData = abi.decode(params, (FlashLoanData));
+
+        if (flashLoanData.open) {
+                uint256 colAmountOut = swap(flashLoanData.coin, flashLoanData.collateral, amount, flashLoanData.swap.amountOutMin, flashLoanData.swap.data);
+            IERC20(flashLoanData.collateral).approve(address(pool), flashLoanData.colAmount + colAmountOut);
+            supply(flashLoanData.collateral, flashLoanData.colAmount + colAmountOut);
+            borrow(flashLoanData.coin, amount + fee);
+            IERC20(flashLoanData.coin).approve(address(pool), amount + fee);
+        } else {
+            IERC20(flashLoanData.coin).approve(address(pool), amount + fee);
+            repay(flashLoanData.coin, amount);
+            uint256 colWithdrawn = withdraw(flashLoanData.collateral, type(uint256).max);
+            IERC20(flashLoanData.collateral).transfer(flashLoanData.caller, flashLoanData.colAmount);
+            uint256 swappedAmount = swap(flashLoanData.collateral, flashLoanData.coin, colWithdrawn - flashLoanData.colAmount, flashLoanData.swap.amountOutMin, flashLoanData.swap.data);
+
+            if (swappedAmount >= amount + fee) {
+                IERC20(flashLoanData.coin).transfer(flashLoanData.caller, swappedAmount - fee - amount);
+            } else {
+                IERC20(flashLoanData.coin).transferFrom(msg.sender, address(this), amount + fee - swappedAmount);
+            }
+        }
+       
     }
+
 }
